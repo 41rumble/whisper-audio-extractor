@@ -35,8 +35,12 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
     
     # Check if the specified method is available
     if method == "pyannote":
-        from pyannote.audio import Pipeline
-        import huggingface_hub
+        try:
+            from pyannote.audio import Pipeline
+            import huggingface_hub
+        except ImportError:
+            print("PyAnnote is not available. Please install pyannote.audio.")
+            return None
         
         # Validate token for pyannote
         if not huggingface_token:
@@ -106,24 +110,44 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
             return None
             
     elif method == "speechbrain":
+        try:
+            import speechbrain as sb
+            from speechbrain.pretrained import EncoderClassifier
+        except ImportError:
+            print("SpeechBrain is not available. Please install speechbrain.")
+            return None
+            
         if not os.path.exists(audio_path):
             print(f"Audio file not found: {audio_path}")
             return None
             
         try:
-            import speechbrain as sb
-            from speechbrain.pretrained import EncoderClassifier
-            
-            print("Using SpeechBrain for diarization...")
+            print("Using SpeechBrain for diarization (no HuggingFace token needed)...")
             
             # Load the model if not already loaded
             if speechbrain_model is None:
                 print("Loading SpeechBrain speaker embedding model...")
-                speechbrain_model = EncoderClassifier.from_hparams(
-                    source="speechbrain/spkrec-ecapa-voxceleb",
-                    savedir="pretrained_models/spkrec-ecapa-voxceleb"
-                )
-                print("SpeechBrain model loaded")
+                # Create model directory if it doesn't exist
+                os.makedirs("pretrained_models", exist_ok=True)
+                
+                try:
+                    # Try to load the model
+                    speechbrain_model = EncoderClassifier.from_hparams(
+                        source="speechbrain/spkrec-ecapa-voxceleb",
+                        savedir="pretrained_models/spkrec-ecapa-voxceleb"
+                    )
+                    print("SpeechBrain model loaded successfully")
+                except Exception as e:
+                    print(f"Error loading SpeechBrain model: {str(e)}")
+                    print("Trying alternative download method...")
+                    
+                    # Try alternative method with run_opts
+                    speechbrain_model = EncoderClassifier.from_hparams(
+                        source="speechbrain/spkrec-ecapa-voxceleb",
+                        savedir="pretrained_models/spkrec-ecapa-voxceleb",
+                        run_opts={"device": "cpu"}
+                    )
+                    print("SpeechBrain model loaded with alternative method")
             
             # Parameters for segmentation
             segment_len = 3.0  # seconds per segment
@@ -229,8 +253,12 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
         try:
             from resemblyzer import VoiceEncoder, preprocess_wav
             import librosa
+        except ImportError:
+            print("Resemblyzer is not available. Please install resemblyzer and librosa.")
+            return None
             
-            print("Using Resemblyzer for diarization...")
+        try:
+            print("Using Resemblyzer for diarization (no HuggingFace token needed)...")
             
             # Load the model if not already loaded
             if resemblyzer_encoder is None:

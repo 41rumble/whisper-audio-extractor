@@ -430,10 +430,10 @@ def upload_file():
                         print("=== END HUGGINGFACE ACCESS ERROR ===\n")
                 
                 if not DIARIZATION_AVAILABLE:
-                    print("WARNING: Speaker diarization is not available (pyannote.audio not installed)")
-                    print("To install: pip install pyannote.audio==3.1.1")
-                elif not huggingface_token:
-                    print("WARNING: No HuggingFace token provided for speaker diarization")
+                    print("WARNING: Speaker diarization is not available (required libraries not installed)")
+                    print("To install: pip install pyannote.audio==3.1.1 speechbrain==0.5.15 resemblyzer==0.1.1")
+                elif diarization_method == "pyannote" and not huggingface_token:
+                    print("WARNING: No HuggingFace token provided for PyAnnote diarization")
                     print("Please provide a valid HuggingFace token with access to pyannote/speaker-diarization-3.1")
                 else:
                     print("\nPerforming speaker diarization...")
