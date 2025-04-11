@@ -254,8 +254,8 @@
                         status.textContent = 'Processing complete!';
                         progressBar.style.width = '100%';
                         
-                        // Display result with HTML formatting
-                        transcription.innerHTML = response.transcription;
+                        // Display result with proper line breaks
+                        transcription.textContent = response.transcription;
                         
                         // Display file info if available
                         if (response.transcription_file) {
