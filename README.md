@@ -73,18 +73,37 @@ A simple web application that allows users to upload MP4 videos, extract the aud
 
 ### Speaker Diarization
 
-To use speaker diarization (identifying different speakers), you must complete these steps:
+The application supports three different methods for speaker diarization:
+
+1. **PyAnnote** - Most accurate but requires HuggingFace token
+2. **SpeechBrain** - Good accuracy, no token required
+3. **Resemblyzer** - Simpler approach, works well for clear audio with distinct speakers
+
+#### Using PyAnnote (Default Method)
+
+To use PyAnnote for speaker diarization, you must complete these steps:
 
 1. Create a HuggingFace account at https://huggingface.co/join
 2. Accept the license for the main model at https://huggingface.co/pyannote/speaker-diarization-3.1
 3. Accept the license for the dependency model at https://huggingface.co/pyannote/segmentation-3.0
 4. Generate an access token at https://huggingface.co/settings/tokens
 5. Check the "Enable Speaker Diarization" option in the web interface
-6. Enter your HuggingFace token in the field that appears
+6. Select "PyAnnote" as the diarization method
+7. Enter your HuggingFace token in the field that appears
 
-**Important:** You must accept the license for BOTH models or speaker diarization will not work, even with a valid token.
+**Important:** You must accept the license for BOTH models or PyAnnote diarization will not work, even with a valid token.
 
-**Troubleshooting:** If you still encounter issues with speaker diarization, you may need to accept licenses for additional dependency models like [pyannote/embedding](https://huggingface.co/pyannote/embedding).
+**Troubleshooting:** If you still encounter issues with PyAnnote diarization, you may need to accept licenses for additional dependency models like [pyannote/embedding](https://huggingface.co/pyannote/embedding).
+
+#### Using SpeechBrain or Resemblyzer
+
+To use these alternative methods:
+
+1. Check the "Enable Speaker Diarization" option in the web interface
+2. Select either "SpeechBrain" or "Resemblyzer" as the diarization method
+3. No token is required for these methods
+
+**Note:** These methods may be less accurate than PyAnnote but are easier to set up and use.
 
 ### Improving Accuracy
 

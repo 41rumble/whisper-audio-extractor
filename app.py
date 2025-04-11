@@ -31,17 +31,43 @@ import whisper
 from pydub import AudioSegment
 import torch
 
-# Import pyannote.audio for speaker diarization if available
-DIARIZATION_AVAILABLE = False
+# Import diarization libraries if available
+PYANNOTE_AVAILABLE = False
+SPEECHBRAIN_AVAILABLE = False
+RESEMBLYZER_AVAILABLE = False
+
+# Try to import pyannote.audio
 try:
     from pyannote.audio import Pipeline
     import huggingface_hub
-    DIARIZATION_AVAILABLE = True
-    print("Speaker diarization is available")
+    PYANNOTE_AVAILABLE = True
+    print("PyAnnote speaker diarization is available")
 except ImportError:
-    print("Speaker diarization is not available. Install pyannote.audio for speaker identification.")
+    print("PyAnnote speaker diarization is not available")
+
+# Try to import SpeechBrain
+try:
+    import speechbrain as sb
+    from speechbrain.pretrained import EncoderClassifier
+    from speechbrain.pretrained import SpeakerRecognition
+    SPEECHBRAIN_AVAILABLE = True
+    print("SpeechBrain speaker diarization is available")
+except ImportError:
+    print("SpeechBrain speaker diarization is not available")
+
+# Try to import Resemblyzer
+try:
+    from resemblyzer import VoiceEncoder, preprocess_wav
+    import librosa
+    RESEMBLYZER_AVAILABLE = True
+    print("Resemblyzer voice embedding is available")
+except ImportError:
+    print("Resemblyzer voice embedding is not available")
+
+# Check if any diarization method is available
+DIARIZATION_AVAILABLE = PYANNOTE_AVAILABLE or SPEECHBRAIN_AVAILABLE or RESEMBLYZER_AVAILABLE
     
-# HuggingFace token for pyannote.audio (needed for speaker diarization)
+# HuggingFace token for pyannote.audio (needed for pyannote diarization)
 # Users will need to provide their own token
 HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", None)
 
@@ -125,102 +151,82 @@ def preprocess_audio(audio_path, output_path=None):
         print(f"Error preprocessing audio: {str(e)}")
         return audio_path  # Return original path if preprocessing fails
 
-def perform_diarization(audio_path, huggingface_token=None):
+# Import our diarization module
+from diarization import perform_diarization as diarize
+from diarization import post_process_diarization
+
+def perform_diarization(audio_path, huggingface_token=None, method="pyannote", max_speakers=5):
     """
     Perform speaker diarization on the audio file.
     Returns a list of segments with speaker IDs and timestamps.
+    
+    Args:
+        audio_path: Path to the audio file
+        huggingface_token: Token for HuggingFace (required for pyannote)
+        method: Diarization method to use ('pyannote', 'speechbrain', or 'resemblyzer')
+        max_speakers: Maximum number of speakers to identify
     """
-    global diarization_pipeline
+    print(f"\nPerforming speaker diarization using {method} method...")
     
-    # Check if diarization is available and token is valid
-    is_valid, message = check_huggingface_token(huggingface_token)
-    if not is_valid:
-        print(f"Cannot perform diarization: {message}")
-        return None
+    # For pyannote method, check token validity
+    if method == "pyannote":
+        if not PYANNOTE_AVAILABLE:
+            print("PyAnnote is not available. Please install pyannote.audio.")
+            return None
+            
+        # Check if token is valid
+        is_valid, message = check_huggingface_token(huggingface_token)
+        if not is_valid:
+            print(f"Cannot perform diarization: {message}")
+            return None
+        
+        print(f"HuggingFace token validation: {message}")
     
-    print(f"HuggingFace token validation: {message}")
+    # For speechbrain method
+    elif method == "speechbrain":
+        if not SPEECHBRAIN_AVAILABLE:
+            print("SpeechBrain is not available. Please install speechbrain.")
+            return None
+        print("Using SpeechBrain for diarization (no HuggingFace token required)")
     
+    # For resemblyzer method
+    elif method == "resemblyzer":
+        if not RESEMBLYZER_AVAILABLE:
+            print("Resemblyzer is not available. Please install resemblyzer.")
+            return None
+        print("Using Resemblyzer for diarization (no HuggingFace token required)")
+    
+    # Perform diarization using the selected method
     try:
-        # Initialize the diarization pipeline if not already done
-        if diarization_pipeline is None:
-            print("Loading speaker diarization model...")
-            
-            # First login with the token
-            huggingface_hub.login(token=huggingface_token)
-            
-            # Explicitly download the segmentation model first
-            try:
-                print("Downloading segmentation model...")
-                from huggingface_hub import hf_hub_download
-                from torch import load as torch_load
-                
-                # Download the model files
-                segmentation_checkpoint = hf_hub_download(
-                    repo_id="pyannote/segmentation-3.0",
-                    filename="pytorch_model.bin",
-                    token=huggingface_token
-                )
-                segmentation_config = hf_hub_download(
-                    repo_id="pyannote/segmentation-3.0",
-                    filename="config.yaml",
-                    token=huggingface_token
-                )
-                print(f"Successfully downloaded segmentation model files")
-            except Exception as e:
-                print(f"Error downloading segmentation model: {str(e)}")
-                raise
-            
-            # Then load the pipeline
-            print("Creating diarization pipeline...")
-            diarization_pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
-                use_auth_token=huggingface_token
-            )
-            
-            # Move to GPU if available
-            if torch.cuda.is_available():
-                print("CUDA is available. Moving diarization pipeline to GPU...")
-                diarization_pipeline.to(torch.device("cuda"))
-                print("Diarization pipeline moved to GPU")
-            else:
-                print("CUDA is not available. Using CPU for diarization (this will be slower)")
-                
-            print("Diarization pipeline created successfully")
+        segments = diarize(
+            audio_path, 
+            method=method, 
+            huggingface_token=huggingface_token,
+            max_speakers=max_speakers
+        )
         
-        # Run the diarization
-        print("Running diarization on audio...")
-        diarization = diarization_pipeline(audio_path)
-        print("Diarization completed")
-        
-        # Convert to a more usable format
-        segments = []
-        for turn, _, speaker in diarization.itertracks(yield_label=True):
-            segments.append({
-                "speaker": speaker,
-                "start": turn.start,
-                "end": turn.end
-            })
-        
-        print(f"Extracted {len(segments)} speaker segments")
-        return segments
+        if segments:
+            # Post-process the segments
+            segments = post_process_diarization(segments, max_speakers=max_speakers)
+            print(f"Diarization completed with {len(segments)} segments and {len(set(s['speaker'] for s in segments))} speakers")
+            return segments
+        else:
+            print("Diarization failed or no speaker segments found")
+            return None
+            
     except Exception as e:
         error_msg = str(e)
         print(f"Error during speaker diarization: {error_msg}")
         
-        # Provide more specific error messages
-        if "401" in error_msg:
-            print("Authentication error: Invalid HuggingFace token")
-        elif "403" in error_msg or "access" in error_msg.lower():
-            print("Access error: Your token does not have access to the model")
-            print("Please accept the license agreements for BOTH models:")
-            print("1. https://huggingface.co/pyannote/speaker-diarization-3.1")
-            print("2. https://huggingface.co/pyannote/segmentation-3.0")
-        elif "download" in error_msg.lower():
-            print("\nThere seems to be an issue with downloading the models.")
-            print("Please make sure you have:")
-            print("1. Accepted the license for BOTH models")
-            print("2. Generated a token with read access")
-            print("3. Provided the correct token")
+        # Provide more specific error messages for pyannote
+        if method == "pyannote":
+            if "401" in error_msg:
+                print("Authentication error: Invalid HuggingFace token")
+            elif "403" in error_msg or "access" in error_msg.lower():
+                print("Access error: Your token does not have access to the model")
+                print("Please accept the license agreements for BOTH models:")
+                print("1. https://huggingface.co/pyannote/speaker-diarization-3.1")
+                print("2. https://huggingface.co/pyannote/segmentation-3.0")
         
         return None
 
@@ -359,7 +365,13 @@ def upload_file():
     print(f"Form data for enable_diarization: {request.form.get('enable_diarization', 'not present')}")
     print(f"Diarization enabled: {enable_diarization}")
     
+    # Get diarization method and options
+    diarization_method = request.form.get('diarization_method', 'pyannote')
+    max_speakers = int(request.form.get('max_speakers', '5'))
     huggingface_token = request.form.get('huggingface_token', HUGGINGFACE_TOKEN)
+    
+    print(f"Diarization method: {diarization_method}")
+    print(f"Max speakers: {max_speakers}")
     
     # Log metadata
     print(f"Received file: {file.filename}")
@@ -425,7 +437,12 @@ def upload_file():
                     print("Please provide a valid HuggingFace token with access to pyannote/speaker-diarization-3.1")
                 else:
                     print("\nPerforming speaker diarization...")
-                    diarization_segments = perform_diarization(processed_audio_path, huggingface_token)
+                    diarization_segments = perform_diarization(
+                        processed_audio_path, 
+                        huggingface_token=huggingface_token,
+                        method=diarization_method,
+                        max_speakers=max_speakers
+                    )
                     
                     if diarization_segments:
                         print(f"Diarization completed successfully. Found {len(diarization_segments)} speaker segments")

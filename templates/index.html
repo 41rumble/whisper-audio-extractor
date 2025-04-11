@@ -158,23 +158,55 @@
                 </label>
             </div>
             
-            <div class="form-group" id="huggingface_token_group" style="display: none;">
-                <label for="huggingface_token">HuggingFace Token (required for speaker diarization):</label>
-                <input type="text" id="huggingface_token" name="huggingface_token" placeholder="Enter your HuggingFace token">
-                <div style="font-size: 0.8em; margin-top: 5px;">
-                    <a href="https://huggingface.co/settings/tokens" target="_blank">Get a token from HuggingFace</a>
-                    <div style="color: #d32f2f; margin-top: 5px; border: 1px solid #d32f2f; padding: 10px; border-radius: 4px; background-color: #ffebee;">
-                        <strong>Important:</strong> Speaker diarization requires a HuggingFace token with access to multiple models.
-                        <p>You must complete these steps:</p>
-                        <ol>
-                            <li>Create a <a href="https://huggingface.co/join" target="_blank">HuggingFace account</a></li>
-                            <li>Accept the license for <a href="https://huggingface.co/pyannote/speaker-diarization-3.1" target="_blank">pyannote/speaker-diarization-3.1</a> model</li>
-                            <li>Also accept the license for <a href="https://huggingface.co/pyannote/segmentation-3.0" target="_blank">pyannote/segmentation-3.0</a> model</li>
-                            <li><a href="https://huggingface.co/settings/tokens" target="_blank">Generate a token</a> with read access</li>
-                            <li>Paste the token in the field above</li>
-                        </ol>
-                        <p><strong>Note:</strong> You must accept the license for BOTH models or speaker identification will not work!</p>
-                        <p><strong>Troubleshooting:</strong> If you still encounter issues, you may need to accept licenses for additional dependency models like <a href="https://huggingface.co/pyannote/embedding" target="_blank">pyannote/embedding</a>.</p>
+            <div id="diarization_options" style="display: none; border: 1px solid #ddd; padding: 15px; border-radius: 4px; margin-top: 10px; background-color: #f9f9f9;">
+                <div class="form-group">
+                    <label for="diarization_method">Diarization Method:</label>
+                    <select id="diarization_method" name="diarization_method">
+                        <option value="pyannote">PyAnnote (requires HuggingFace token)</option>
+                        <option value="speechbrain">SpeechBrain (no token required)</option>
+                        <option value="resemblyzer">Resemblyzer (no token required)</option>
+                    </select>
+                    <div style="font-size: 0.8em; margin-top: 5px;">
+                        <p>Choose the method that works best for your audio:</p>
+                        <ul>
+                            <li><strong>PyAnnote:</strong> Most accurate but requires HuggingFace token</li>
+                            <li><strong>SpeechBrain:</strong> Good accuracy, no token required</li>
+                            <li><strong>Resemblyzer:</strong> Simpler approach, works well for clear audio</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="max_speakers">Maximum Number of Speakers:</label>
+                    <select id="max_speakers" name="max_speakers">
+                        <option value="2">2 speakers</option>
+                        <option value="3">3 speakers</option>
+                        <option value="4">4 speakers</option>
+                        <option value="5" selected>5 speakers</option>
+                        <option value="6">6 speakers</option>
+                        <option value="8">8 speakers</option>
+                        <option value="10">10 speakers</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="huggingface_token_group">
+                    <label for="huggingface_token">HuggingFace Token (required for PyAnnote method):</label>
+                    <input type="text" id="huggingface_token" name="huggingface_token" placeholder="Enter your HuggingFace token">
+                    <div style="font-size: 0.8em; margin-top: 5px;">
+                        <a href="https://huggingface.co/settings/tokens" target="_blank">Get a token from HuggingFace</a>
+                        <div style="color: #d32f2f; margin-top: 5px; border: 1px solid #d32f2f; padding: 10px; border-radius: 4px; background-color: #ffebee;">
+                            <strong>Important:</strong> PyAnnote diarization requires a HuggingFace token with access to multiple models.
+                            <p>You must complete these steps:</p>
+                            <ol>
+                                <li>Create a <a href="https://huggingface.co/join" target="_blank">HuggingFace account</a></li>
+                                <li>Accept the license for <a href="https://huggingface.co/pyannote/speaker-diarization-3.1" target="_blank">pyannote/speaker-diarization-3.1</a> model</li>
+                                <li>Also accept the license for <a href="https://huggingface.co/pyannote/segmentation-3.0" target="_blank">pyannote/segmentation-3.0</a> model</li>
+                                <li><a href="https://huggingface.co/settings/tokens" target="_blank">Generate a token</a> with read access</li>
+                                <li>Paste the token in the field above</li>
+                            </ol>
+                            <p><strong>Note:</strong> You must accept the license for BOTH models or speaker identification will not work!</p>
+                            <p><strong>Troubleshooting:</strong> If you still encounter issues, you may need to accept licenses for additional dependency models like <a href="https://huggingface.co/pyannote/embedding" target="_blank">pyannote/embedding</a>.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -202,11 +234,29 @@
     </div>
 
     <script>
-        // Show/hide HuggingFace token field based on checkbox
+        // Show/hide diarization options based on checkbox
         document.getElementById('enable_diarization').addEventListener('change', function() {
-            const tokenGroup = document.getElementById('huggingface_token_group');
-            tokenGroup.style.display = this.checked ? 'block' : 'none';
+            const diarizationOptions = document.getElementById('diarization_options');
+            diarizationOptions.style.display = this.checked ? 'block' : 'none';
+            updateTokenFieldVisibility();
         });
+        
+        // Show/hide HuggingFace token field based on selected method
+        document.getElementById('diarization_method').addEventListener('change', function() {
+            updateTokenFieldVisibility();
+        });
+        
+        function updateTokenFieldVisibility() {
+            const method = document.getElementById('diarization_method').value;
+            const tokenGroup = document.getElementById('huggingface_token_group');
+            
+            // Only show token field for pyannote method
+            if (method === 'pyannote') {
+                tokenGroup.style.display = 'block';
+            } else {
+                tokenGroup.style.display = 'none';
+            }
+        }
         
         document.getElementById('uploadForm').addEventListener('submit', function(e) {
             e.preventDefault();
