@@ -289,19 +289,36 @@ def upload_file():
             
             # Perform speaker diarization if requested and available
             diarization_segments = None
+            print("\n=== SPEAKER DIARIZATION STATUS ===")
+            print(f"Diarization requested: {enable_diarization}")
+            print(f"Diarization available: {DIARIZATION_AVAILABLE}")
+            print(f"HuggingFace token provided: {bool(huggingface_token)}")
+            
             if enable_diarization:
-                print("Speaker diarization requested")
+                print("\nSpeaker diarization requested")
                 if not DIARIZATION_AVAILABLE:
                     print("WARNING: Speaker diarization is not available (pyannote.audio not installed)")
+                    print("To install: pip install pyannote.audio==3.1.1")
                 elif not huggingface_token:
                     print("WARNING: No HuggingFace token provided for speaker diarization")
+                    print("Please provide a valid HuggingFace token with access to pyannote/speaker-diarization-3.1")
                 else:
-                    print("Performing speaker diarization...")
-                    diarization_segments = perform_diarization(processed_audio_path, huggingface_token)
-                    if diarization_segments:
-                        print(f"Diarization completed. Found {len(diarization_segments)} speaker segments")
-                    else:
-                        print("Diarization failed or no speaker segments found")
+                    print("\nPerforming speaker diarization...")
+                    try:
+                        diarization_segments = perform_diarization(processed_audio_path, huggingface_token)
+                        if diarization_segments:
+                            print(f"Diarization completed successfully. Found {len(diarization_segments)} speaker segments")
+                            # Print a sample of the diarization segments
+                            print("\nSample diarization segments:")
+                            for i, segment in enumerate(diarization_segments[:5]):
+                                print(f"  Segment {i}: Speaker {segment['speaker']}, {segment['start']:.2f}s - {segment['end']:.2f}s")
+                            if len(diarization_segments) > 5:
+                                print(f"  ... and {len(diarization_segments) - 5} more segments")
+                        else:
+                            print("Diarization failed or no speaker segments found")
+                    except Exception as e:
+                        print(f"ERROR during diarization: {str(e)}")
+            print("=== END SPEAKER DIARIZATION STATUS ===\n")
             
             # Load model if not already loaded or if a different model size is requested
             if model is None or (hasattr(model, 'model_size') and model.model_size != model_size):
@@ -365,6 +382,10 @@ def upload_file():
             
             print(f"Transcription saved to: {transcription_path}")
             print("\n--- TRANSCRIPTION ---\n")
+            if diarization_segments:
+                print("TRANSCRIPTION WITH SPEAKER DIARIZATION:")
+            else:
+                print("TRANSCRIPTION (NO SPEAKER DIARIZATION):")
             print(formatted_text)
             print("\n--- END TRANSCRIPTION ---\n")
             

@@ -282,8 +282,20 @@
                         if (response.metadata.language) {
                             modelInfoText += `, Language: ${response.metadata.language}`;
                         }
+                        
+                        // Add a clear indication of diarization status
                         if (response.has_speaker_diarization) {
                             modelInfoText += `, Speaker Diarization: Enabled`;
+                            // Add a note at the top of the transcription
+                            transcription.innerHTML = "<div style='color: green; font-weight: bold; margin-bottom: 10px;'>✓ Transcription with speaker identification</div>" + 
+                                                     transcription.textContent;
+                        } else {
+                            modelInfoText += `, Speaker Diarization: Not available`;
+                            // Add a note at the top of the transcription if diarization was requested but failed
+                            if (document.getElementById('enable_diarization').checked) {
+                                transcription.innerHTML = "<div style='color: red; font-weight: bold; margin-bottom: 10px;'>⚠️ Speaker identification was requested but could not be performed. Check console for details.</div>" + 
+                                                         transcription.textContent;
+                            }
                         }
                         modelInfo.textContent = modelInfoText;
                         
