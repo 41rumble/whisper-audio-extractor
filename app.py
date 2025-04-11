@@ -130,10 +130,18 @@ def merge_diarization_with_transcription(transcription, diarization_segments):
     Merge the diarization information with the transcription.
     This is a simple approach that assigns speakers based on timestamp overlap.
     """
-    if not diarization_segments or not transcription.get("segments"):
+    if not diarization_segments:
+        print("No diarization segments to merge")
         return transcription
     
+    if not transcription.get("segments"):
+        print("No transcription segments to merge with diarization")
+        return transcription
+    
+    print(f"Merging {len(diarization_segments)} diarization segments with {len(transcription['segments'])} transcription segments")
+    
     result = transcription.copy()
+    segments_with_speakers = 0
     
     # For each transcription segment, find the most overlapping speaker
     for segment in result["segments"]:
@@ -160,7 +168,9 @@ def merge_diarization_with_transcription(transcription, diarization_segments):
         # Assign the speaker to the segment
         if assigned_speaker:
             segment["speaker"] = assigned_speaker
+            segments_with_speakers += 1
     
+    print(f"Assigned speakers to {segments_with_speakers} out of {len(result['segments'])} segments")
     return result
 
 def format_transcript_with_speakers(transcription):
@@ -168,15 +178,29 @@ def format_transcript_with_speakers(transcription):
     Format the transcription with speaker labels.
     Simple format: "Speaker X: text"
     """
-    if not transcription.get("segments") or not any("speaker" in segment for segment in transcription["segments"]):
+    # Check if we have speaker information
+    has_speaker_info = False
+    if transcription.get("segments"):
+        has_speaker_info = any("speaker" in segment for segment in transcription["segments"])
+    
+    if not has_speaker_info:
+        print("No speaker information found in transcription, returning plain text")
         return transcription["text"]
+    
+    print("Formatting transcript with speaker labels")
     
     formatted_text = []
     current_speaker = None
     current_text = []
+    speaker_count = {}
     
     for segment in transcription["segments"]:
         speaker = segment.get("speaker", "Unknown")
+        # Count speakers for debugging
+        if speaker not in speaker_count:
+            speaker_count[speaker] = 0
+        speaker_count[speaker] += 1
+        
         # Make speaker label more user-friendly (SPEAKER_0 -> Speaker 1)
         if speaker.startswith("SPEAKER_"):
             speaker_num = int(speaker.split("_")[1]) + 1  # Convert to 1-based indexing for users
@@ -198,7 +222,16 @@ def format_transcript_with_speakers(transcription):
     if current_text:
         formatted_text.append(f"{current_speaker}: {' '.join(current_text)}")
     
-    return "\n\n".join(formatted_text)
+    print(f"Speaker distribution: {speaker_count}")
+    print(f"Created {len(formatted_text)} formatted segments")
+    
+    result = "\n\n".join(formatted_text)
+    # Print a sample of the formatted text
+    print("Sample of formatted text:")
+    sample = result[:500] + "..." if len(result) > 500 else result
+    print(sample)
+    
+    return result
 
 @app.route('/')
 def index():
@@ -256,9 +289,19 @@ def upload_file():
             
             # Perform speaker diarization if requested and available
             diarization_segments = None
-            if enable_diarization and DIARIZATION_AVAILABLE and huggingface_token:
-                print("Performing speaker diarization...")
-                diarization_segments = perform_diarization(processed_audio_path, huggingface_token)
+            if enable_diarization:
+                print("Speaker diarization requested")
+                if not DIARIZATION_AVAILABLE:
+                    print("WARNING: Speaker diarization is not available (pyannote.audio not installed)")
+                elif not huggingface_token:
+                    print("WARNING: No HuggingFace token provided for speaker diarization")
+                else:
+                    print("Performing speaker diarization...")
+                    diarization_segments = perform_diarization(processed_audio_path, huggingface_token)
+                    if diarization_segments:
+                        print(f"Diarization completed. Found {len(diarization_segments)} speaker segments")
+                    else:
+                        print("Diarization failed or no speaker segments found")
             
             # Load model if not already loaded or if a different model size is requested
             if model is None or (hasattr(model, 'model_size') and model.model_size != model_size):

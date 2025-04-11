@@ -163,6 +163,15 @@
                 <input type="text" id="huggingface_token" name="huggingface_token" placeholder="Enter your HuggingFace token">
                 <div style="font-size: 0.8em; margin-top: 5px;">
                     <a href="https://huggingface.co/settings/tokens" target="_blank">Get a token from HuggingFace</a>
+                    <p style="color: #d32f2f; margin-top: 5px;">
+                        <strong>Important:</strong> Speaker diarization requires a HuggingFace token with access to the pyannote/speaker-diarization-3.1 model.
+                        You need to:
+                        <ol>
+                            <li>Create a HuggingFace account</li>
+                            <li>Accept the license at <a href="https://huggingface.co/pyannote/speaker-diarization-3.1" target="_blank">pyannote/speaker-diarization-3.1</a></li>
+                            <li>Generate a token with read access</li>
+                        </ol>
+                    </p>
                 </div>
             </div>
             
