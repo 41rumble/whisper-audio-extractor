@@ -322,7 +322,20 @@ def upload_file():
                         else:
                             print("Diarization failed or no speaker segments found")
                     except Exception as e:
-                        print(f"ERROR during diarization: {str(e)}")
+                        error_msg = str(e)
+                        print(f"ERROR during diarization: {error_msg}")
+                        
+                        # Provide more helpful error messages for common issues
+                        if "Could not download" in error_msg and "pipeline" in error_msg:
+                            print("\n=== HUGGINGFACE ACCESS ERROR ===")
+                            print("Your HuggingFace token does not have access to the diarization model.")
+                            print("To fix this:")
+                            print("1. Go to https://huggingface.co/pyannote/speaker-diarization-3.1")
+                            print("2. Log in to your HuggingFace account")
+                            print("3. Click on 'Access repository' and accept the license agreement")
+                            print("4. Generate a new token at https://huggingface.co/settings/tokens")
+                            print("5. Use the new token in this application")
+                            print("=== END HUGGINGFACE ACCESS ERROR ===\n")
             print("=== END SPEAKER DIARIZATION STATUS ===\n")
             
             # Load model if not already loaded or if a different model size is requested

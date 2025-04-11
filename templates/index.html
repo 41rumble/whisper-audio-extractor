@@ -163,15 +163,18 @@
                 <input type="text" id="huggingface_token" name="huggingface_token" placeholder="Enter your HuggingFace token">
                 <div style="font-size: 0.8em; margin-top: 5px;">
                     <a href="https://huggingface.co/settings/tokens" target="_blank">Get a token from HuggingFace</a>
-                    <p style="color: #d32f2f; margin-top: 5px;">
+                    <div style="color: #d32f2f; margin-top: 5px; border: 1px solid #d32f2f; padding: 10px; border-radius: 4px; background-color: #ffebee;">
                         <strong>Important:</strong> Speaker diarization requires a HuggingFace token with access to the pyannote/speaker-diarization-3.1 model.
-                        You need to:
+                        <p>You must complete these steps:</p>
                         <ol>
-                            <li>Create a HuggingFace account</li>
-                            <li>Accept the license at <a href="https://huggingface.co/pyannote/speaker-diarization-3.1" target="_blank">pyannote/speaker-diarization-3.1</a></li>
-                            <li>Generate a token with read access</li>
+                            <li>Create a <a href="https://huggingface.co/join" target="_blank">HuggingFace account</a></li>
+                            <li>Go to the <a href="https://huggingface.co/pyannote/speaker-diarization-3.1" target="_blank">pyannote/speaker-diarization-3.1</a> model page</li>
+                            <li>Click the "Access repository" button and accept the license agreement</li>
+                            <li><a href="https://huggingface.co/settings/tokens" target="_blank">Generate a token</a> with read access</li>
+                            <li>Paste the token in the field above</li>
                         </ol>
-                    </p>
+                        <p><strong>Note:</strong> If you skip these steps, speaker identification will not work!</p>
+                    </div>
                 </div>
             </div>
             

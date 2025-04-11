@@ -73,12 +73,16 @@ A simple web application that allows users to upload MP4 videos, extract the aud
 
 ### Speaker Diarization
 
-To use speaker diarization (identifying different speakers):
+To use speaker diarization (identifying different speakers), you must complete these steps:
 
-1. Create a HuggingFace account at https://huggingface.co/
-2. Generate an access token at https://huggingface.co/settings/tokens
-3. Check the "Enable Speaker Diarization" option in the web interface
-4. Enter your HuggingFace token in the field that appears
+1. Create a HuggingFace account at https://huggingface.co/join
+2. Go to the model page at https://huggingface.co/pyannote/speaker-diarization-3.1
+3. Click the "Access repository" button and accept the license agreement
+4. Generate an access token at https://huggingface.co/settings/tokens
+5. Check the "Enable Speaker Diarization" option in the web interface
+6. Enter your HuggingFace token in the field that appears
+
+**Important:** If you skip the step of accepting the license agreement, speaker diarization will not work, even with a valid token.
 
 ### Improving Accuracy
 
