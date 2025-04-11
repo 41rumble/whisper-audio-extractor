@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP4 Audio Extractor & Transcriber</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], 
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .file-input {
+            margin: 15px 0;
+        }
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .status {
+            margin-top: 10px;
+            font-style: italic;
+        }
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .error {
+            color: #f44336;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>MP4 Audio Extractor & Transcriber</h1>
+    
+    <div class="container">
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <textarea id="description" name="description"></textarea>
+            </div>
+            
+            <div class="form-group file-input">
+                <label for="file">Select MP4 File:</label>
+                <input type="file" id="file" name="file" accept="video/mp4" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">Upload & Process</button>
+        </form>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+            </div>
+            <div class="status" id="status">Uploading file...</div>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="result" id="result">
+            <h3>Transcription Result:</h3>
+            <div id="transcription"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('file');
+            const nameInput = document.getElementById('name');
+            const descriptionInput = document.getElementById('description');
+            const submitBtn = document.getElementById('submitBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const status = document.getElementById('status');
+            const error = document.getElementById('error');
+            const result = document.getElementById('result');
+            const transcription = document.getElementById('transcription');
+            
+            // Validate file
+            if (!fileInput.files[0]) {
+                error.textContent = 'Please select an MP4 file';
+                return;
+            }
+            
+            // Clear previous results and errors
+            error.textContent = '';
+            result.style.display = 'none';
+            
+            // Create FormData
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('name', nameInput.value);
+            formData.append('description', descriptionInput.value);
+            
+            // Disable submit button and show progress
+            submitBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            
+            // Create and configure XMLHttpRequest
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+            
+            // Track upload progress
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percentComplete + '%';
+                }
+            };
+            
+            // Handle response
+            xhr.onload = function() {
+                submitBtn.disabled = false;
+                
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        status.textContent = 'Processing complete!';
+                        progressBar.style.width = '100%';
+                        
+                        // Display result
+                        transcription.textContent = response.transcription;
+                        result.style.display = 'block';
+                    } catch (e) {
+                        error.textContent = 'Error parsing server response';
+                    }
+                } else {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        error.textContent = response.error || 'Server error occurred';
+                    } catch (e) {
+                        error.textContent = 'Server error occurred';
+                    }
+                }
+            };
+            
+            // Handle network errors
+            xhr.onerror = function() {
+                submitBtn.disabled = false;
+                error.textContent = 'Network error occurred';
+            };
+            
+            // Update status during processing
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 3) {
+                    status.textContent = 'Processing video...';
+                }
+            };
+            
+            // Send the request
+            xhr.send(formData);
+            status.textContent = 'Uploading file...';
+        });
+    </script>
+</body>
+</html>
