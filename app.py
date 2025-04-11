@@ -35,6 +35,7 @@ import torch
 DIARIZATION_AVAILABLE = False
 try:
     from pyannote.audio import Pipeline
+    import huggingface_hub
     DIARIZATION_AVAILABLE = True
     print("Speaker diarization is available")
 except ImportError:
@@ -43,6 +44,35 @@ except ImportError:
 # HuggingFace token for pyannote.audio (needed for speaker diarization)
 # Users will need to provide their own token
 HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", None)
+
+def check_huggingface_token(token):
+    """
+    Check if the HuggingFace token is valid and has access to the pyannote/speaker-diarization model.
+    """
+    if not DIARIZATION_AVAILABLE:
+        return False, "Speaker diarization is not available (pyannote.audio not installed)"
+    
+    if not token:
+        return False, "No HuggingFace token provided"
+    
+    try:
+        # Try to log in with the token
+        huggingface_hub.login(token=token)
+        
+        # Check if we can access the model info
+        model_info = huggingface_hub.model_info("pyannote/speaker-diarization-3.1")
+        if model_info:
+            return True, "Token is valid and has access to the model"
+    except Exception as e:
+        error_msg = str(e)
+        if "401" in error_msg:
+            return False, "Invalid HuggingFace token"
+        elif "403" in error_msg or "access" in error_msg.lower():
+            return False, "Token does not have access to pyannote/speaker-diarization-3.1. Please accept the license agreement."
+        else:
+            return False, f"Error checking token: {error_msg}"
+    
+    return True, "Token appears to be valid"
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -90,18 +120,22 @@ def perform_diarization(audio_path, huggingface_token=None):
     """
     global diarization_pipeline
     
-    if not DIARIZATION_AVAILABLE:
-        print("Speaker diarization is not available")
+    # Check if diarization is available and token is valid
+    is_valid, message = check_huggingface_token(huggingface_token)
+    if not is_valid:
+        print(f"Cannot perform diarization: {message}")
         return None
     
-    if huggingface_token is None:
-        print("No HuggingFace token provided for speaker diarization")
-        return None
+    print(f"HuggingFace token validation: {message}")
     
     try:
         # Initialize the diarization pipeline if not already done
         if diarization_pipeline is None:
             print("Loading speaker diarization model...")
+            # First login with the token
+            huggingface_hub.login(token=huggingface_token)
+            
+            # Then load the pipeline
             diarization_pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
                 use_auth_token=huggingface_token
@@ -122,7 +156,16 @@ def perform_diarization(audio_path, huggingface_token=None):
         
         return segments
     except Exception as e:
-        print(f"Error during speaker diarization: {str(e)}")
+        error_msg = str(e)
+        print(f"Error during speaker diarization: {error_msg}")
+        
+        # Provide more specific error messages
+        if "401" in error_msg:
+            print("Authentication error: Invalid HuggingFace token")
+        elif "403" in error_msg or "access" in error_msg.lower():
+            print("Access error: Your token does not have access to the model")
+            print("Please accept the license agreement at https://huggingface.co/pyannote/speaker-diarization-3.1")
+        
         return None
 
 def merge_diarization_with_transcription(transcription, diarization_segments):
@@ -301,6 +344,23 @@ def upload_file():
             
             if enable_diarization:
                 print("\nSpeaker diarization requested")
+                
+                # Check if token is valid before attempting diarization
+                if huggingface_token:
+                    is_valid, message = check_huggingface_token(huggingface_token)
+                    print(f"Token validation: {message}")
+                    
+                    if not is_valid:
+                        print("\n=== HUGGINGFACE ACCESS ERROR ===")
+                        print(message)
+                        print("To fix this:")
+                        print("1. Go to https://huggingface.co/pyannote/speaker-diarization-3.1")
+                        print("2. Log in to your HuggingFace account")
+                        print("3. Click on 'Access repository' and accept the license agreement")
+                        print("4. Generate a new token at https://huggingface.co/settings/tokens")
+                        print("5. Use the new token in this application")
+                        print("=== END HUGGINGFACE ACCESS ERROR ===\n")
+                
                 if not DIARIZATION_AVAILABLE:
                     print("WARNING: Speaker diarization is not available (pyannote.audio not installed)")
                     print("To install: pip install pyannote.audio==3.1.1")
@@ -309,33 +369,19 @@ def upload_file():
                     print("Please provide a valid HuggingFace token with access to pyannote/speaker-diarization-3.1")
                 else:
                     print("\nPerforming speaker diarization...")
-                    try:
-                        diarization_segments = perform_diarization(processed_audio_path, huggingface_token)
-                        if diarization_segments:
-                            print(f"Diarization completed successfully. Found {len(diarization_segments)} speaker segments")
-                            # Print a sample of the diarization segments
-                            print("\nSample diarization segments:")
-                            for i, segment in enumerate(diarization_segments[:5]):
-                                print(f"  Segment {i}: Speaker {segment['speaker']}, {segment['start']:.2f}s - {segment['end']:.2f}s")
-                            if len(diarization_segments) > 5:
-                                print(f"  ... and {len(diarization_segments) - 5} more segments")
-                        else:
-                            print("Diarization failed or no speaker segments found")
-                    except Exception as e:
-                        error_msg = str(e)
-                        print(f"ERROR during diarization: {error_msg}")
+                    diarization_segments = perform_diarization(processed_audio_path, huggingface_token)
+                    
+                    if diarization_segments:
+                        print(f"Diarization completed successfully. Found {len(diarization_segments)} speaker segments")
+                        # Print a sample of the diarization segments
+                        print("\nSample diarization segments:")
+                        for i, segment in enumerate(diarization_segments[:5]):
+                            print(f"  Segment {i}: Speaker {segment['speaker']}, {segment['start']:.2f}s - {segment['end']:.2f}s")
+                        if len(diarization_segments) > 5:
+                            print(f"  ... and {len(diarization_segments) - 5} more segments")
+                    else:
+                        print("Diarization failed or no speaker segments found")
                         
-                        # Provide more helpful error messages for common issues
-                        if "Could not download" in error_msg and "pipeline" in error_msg:
-                            print("\n=== HUGGINGFACE ACCESS ERROR ===")
-                            print("Your HuggingFace token does not have access to the diarization model.")
-                            print("To fix this:")
-                            print("1. Go to https://huggingface.co/pyannote/speaker-diarization-3.1")
-                            print("2. Log in to your HuggingFace account")
-                            print("3. Click on 'Access repository' and accept the license agreement")
-                            print("4. Generate a new token at https://huggingface.co/settings/tokens")
-                            print("5. Use the new token in this application")
-                            print("=== END HUGGINGFACE ACCESS ERROR ===\n")
             print("=== END SPEAKER DIARIZATION STATUS ===\n")
             
             # Load model if not already loaded or if a different model size is requested
