@@ -1,6 +1,26 @@
 import os
+import sys
 import tempfile
 import uuid
+
+# Check NumPy version before importing other dependencies
+try:
+    import numpy as np
+    numpy_version = np.__version__
+    major_version = int(numpy_version.split('.')[0])
+    if major_version >= 2:
+        print("\n" + "="*80)
+        print("ERROR: Incompatible NumPy version detected:", numpy_version)
+        print("This application requires NumPy < 2.0 due to compatibility issues with PyTorch.")
+        print("\nPlease downgrade NumPy by running:")
+        print("    pip uninstall -y numpy")
+        print("    pip install numpy<2.0.0")
+        print("="*80 + "\n")
+        sys.exit(1)
+except ImportError:
+    # NumPy not installed yet, which is fine
+    pass
+
 from flask import Flask, request, render_template, jsonify
 from werkzeug.utils import secure_filename
 from moviepy.editor import VideoFileClip
@@ -68,6 +88,28 @@ def upload_file():
             result = model.transcribe(audio_path)
             transcription = result["text"]
             
+            # Create a results directory if it doesn't exist
+            results_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'transcriptions')
+            os.makedirs(results_dir, exist_ok=True)
+            
+            # Save the transcription to a file
+            original_filename = os.path.splitext(os.path.basename(file.filename))[0]
+            timestamp = uuid.uuid4().hex[:8]
+            transcription_filename = f"{original_filename}_{timestamp}.txt"
+            transcription_path = os.path.join(results_dir, transcription_filename)
+            
+            with open(transcription_path, 'w', encoding='utf-8') as f:
+                f.write(f"Name: {name}\n")
+                f.write(f"Description: {description}\n")
+                f.write(f"Original file: {file.filename}\n")
+                f.write("\n--- TRANSCRIPTION ---\n\n")
+                f.write(transcription)
+            
+            print(f"Transcription saved to: {transcription_path}")
+            print("\n--- TRANSCRIPTION ---\n")
+            print(transcription)
+            print("\n--- END TRANSCRIPTION ---\n")
+            
             # Clean up temporary files
             os.unlink(audio_path)
             os.unlink(video_path)
@@ -75,6 +117,7 @@ def upload_file():
             return jsonify({
                 'success': True,
                 'transcription': transcription,
+                'transcription_file': transcription_path,
                 'metadata': {
                     'name': name,
                     'description': description

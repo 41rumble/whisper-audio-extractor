@@ -130,6 +130,7 @@
         <div class="result" id="result">
             <h3>Transcription Result:</h3>
             <div id="transcription"></div>
+            <div id="file-info" style="margin-top: 15px; font-style: italic;"></div>
         </div>
     </div>
 
@@ -147,6 +148,7 @@
             const error = document.getElementById('error');
             const result = document.getElementById('result');
             const transcription = document.getElementById('transcription');
+            const fileInfo = document.getElementById('file-info');
             
             // Validate file
             if (!fileInput.files[0]) {
@@ -193,6 +195,14 @@
                         
                         // Display result
                         transcription.textContent = response.transcription;
+                        
+                        // Display file info if available
+                        if (response.transcription_file) {
+                            fileInfo.textContent = `Transcription saved to: ${response.transcription_file}`;
+                        } else {
+                            fileInfo.textContent = '';
+                        }
+                        
                         result.style.display = 'block';
                     } catch (e) {
                         error.textContent = 'Error parsing server response';

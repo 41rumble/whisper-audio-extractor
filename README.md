@@ -8,6 +8,7 @@ A simple web application that allows users to upload MP4 videos, extract the aud
 - Add metadata (name and description)
 - Extract audio from video
 - Transcribe audio to text using Whisper
+- Save transcriptions to text files
 - Simple and responsive web interface
 
 ## Requirements
