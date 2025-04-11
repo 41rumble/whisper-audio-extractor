@@ -231,14 +231,28 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
             # Distance matrix
             distance_matrix = cdist(embeddings, embeddings, metric='cosine')
             
-            # Try different numbers of clusters
+            # Try different numbers of clusters with compatibility for different scikit-learn versions
             for n_clusters in range(2, min(max_speakers + 1, len(segments) + 1)):
-                clustering = AgglomerativeClustering(
-                    n_clusters=n_clusters,
-                    affinity='precomputed',
-                    linkage='average'
-                )
-                labels = clustering.fit_predict(distance_matrix)
+                try:
+                    # Try with affinity parameter (newer versions)
+                    clustering = AgglomerativeClustering(
+                        n_clusters=n_clusters,
+                        affinity='precomputed',
+                        linkage='average'
+                    )
+                    labels = clustering.fit_predict(distance_matrix)
+                except TypeError as e:
+                    print(f"Clustering error: {str(e)}")
+                    print("Using alternative clustering method (older scikit-learn)")
+                    # Fall back to older version without affinity
+                    clustering = AgglomerativeClustering(
+                        n_clusters=n_clusters,
+                        linkage='average'
+                    )
+                    # For older versions, we need to use a different approach
+                    # Convert distance to similarity (simple approach)
+                    similarity_matrix = 1.0 - distance_matrix
+                    labels = clustering.fit_predict(similarity_matrix)
                 
                 # Calculate silhouette score (simplified)
                 score = np.mean(distance_matrix[np.arange(len(labels)), labels])
@@ -367,12 +381,26 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
             best_n_clusters = 2
             
             for n_clusters in range(2, min(max_speakers + 1, len(segments) + 1)):
-                clustering = AgglomerativeClustering(
-                    n_clusters=n_clusters,
-                    affinity='precomputed',
-                    linkage='average'
-                )
-                labels = clustering.fit_predict(distance_matrix)
+                try:
+                    # Try with affinity parameter (newer versions)
+                    clustering = AgglomerativeClustering(
+                        n_clusters=n_clusters,
+                        affinity='precomputed',
+                        linkage='average'
+                    )
+                    labels = clustering.fit_predict(distance_matrix)
+                except TypeError as e:
+                    print(f"Clustering error: {str(e)}")
+                    print("Using alternative clustering method (older scikit-learn)")
+                    # Fall back to older version without affinity
+                    clustering = AgglomerativeClustering(
+                        n_clusters=n_clusters,
+                        linkage='average'
+                    )
+                    # For older versions, we need to use a different approach
+                    # Convert distance to similarity (simple approach)
+                    similarity_matrix = 1.0 - distance_matrix
+                    labels = clustering.fit_predict(similarity_matrix)
                 
                 # Calculate silhouette score (simplified)
                 score = np.mean(distance_matrix[np.arange(len(labels)), labels])

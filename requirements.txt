@@ -6,5 +6,7 @@ torch==2.1.0
 pyannote.audio==3.1.1
 speechbrain==0.5.15
 resemblyzer==0.1.1
+scikit-learn>=0.24.0
+librosa>=0.8.0
 soundfile==0.12.1
 pydub==0.25.1
