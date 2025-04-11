@@ -47,7 +47,7 @@ HUGGINGFACE_TOKEN = os.environ.get("HUGGINGFACE_TOKEN", None)
 
 def check_huggingface_token(token):
     """
-    Check if the HuggingFace token is valid and has access to the pyannote/speaker-diarization model.
+    Check if the HuggingFace token is valid and has access to the required pyannote models.
     """
     if not DIARIZATION_AVAILABLE:
         return False, "Speaker diarization is not available (pyannote.audio not installed)"
@@ -55,24 +55,36 @@ def check_huggingface_token(token):
     if not token:
         return False, "No HuggingFace token provided"
     
+    required_models = [
+        "pyannote/speaker-diarization-3.1",
+        "pyannote/segmentation-3.0"  # This is a dependency of speaker-diarization
+    ]
+    
     try:
         # Try to log in with the token
         huggingface_hub.login(token=token)
         
-        # Check if we can access the model info
-        model_info = huggingface_hub.model_info("pyannote/speaker-diarization-3.1")
-        if model_info:
-            return True, "Token is valid and has access to the model"
+        # Check access to all required models
+        for model_id in required_models:
+            try:
+                model_info = huggingface_hub.model_info(model_id)
+                print(f"✓ Access to {model_id} verified")
+            except Exception as e:
+                error_msg = str(e)
+                if "401" in error_msg:
+                    return False, f"Invalid HuggingFace token for {model_id}"
+                elif "403" in error_msg or "access" in error_msg.lower():
+                    return False, f"Token does not have access to {model_id}. Please accept the license agreement."
+                else:
+                    return False, f"Error accessing {model_id}: {error_msg}"
+        
+        return True, "Token is valid and has access to all required models"
     except Exception as e:
         error_msg = str(e)
         if "401" in error_msg:
             return False, "Invalid HuggingFace token"
-        elif "403" in error_msg or "access" in error_msg.lower():
-            return False, "Token does not have access to pyannote/speaker-diarization-3.1. Please accept the license agreement."
         else:
             return False, f"Error checking token: {error_msg}"
-    
-    return True, "Token appears to be valid"
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
