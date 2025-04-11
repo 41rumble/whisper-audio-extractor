@@ -161,18 +161,21 @@
             <div id="diarization_options" style="display: none; border: 1px solid #ddd; padding: 15px; border-radius: 4px; margin-top: 10px; background-color: #f9f9f9;">
                 <div class="form-group">
                     <label for="diarization_method">Diarization Method:</label>
-                    <select id="diarization_method" name="diarization_method">
+                    <select id="diarization_method" name="diarization_method" style="padding: 8px; border: 1px solid #4CAF50; border-radius: 4px;">
+                        <option value="speechbrain" style="background-color: #e8f5e9; font-weight: bold;" selected>SpeechBrain (NO TOKEN REQUIRED)</option>
+                        <option value="resemblyzer" style="background-color: #e8f5e9; font-weight: bold;">Resemblyzer (NO TOKEN REQUIRED)</option>
                         <option value="pyannote">PyAnnote (requires HuggingFace token)</option>
-                        <option value="speechbrain">SpeechBrain (no token required)</option>
-                        <option value="resemblyzer">Resemblyzer (no token required)</option>
                     </select>
                     <div style="font-size: 0.8em; margin-top: 5px;">
-                        <p>Choose the method that works best for your audio:</p>
-                        <ul>
-                            <li><strong>PyAnnote:</strong> Most accurate but requires HuggingFace token</li>
-                            <li><strong>SpeechBrain:</strong> Good accuracy, no token required</li>
-                            <li><strong>Resemblyzer:</strong> Simpler approach, works well for clear audio</li>
-                        </ul>
+                        <p><strong style="color: #4CAF50;">⚠️ Having trouble with PyAnnote?</strong> Try SpeechBrain or Resemblyzer instead - they don't require any token!</p>
+                        <div style="border: 1px solid #4CAF50; padding: 10px; border-radius: 4px; background-color: #e8f5e9; margin-top: 10px;">
+                            <p><strong>Choose the method that works best for your audio:</strong></p>
+                            <ul>
+                                <li><strong>PyAnnote:</strong> Most accurate but requires valid HuggingFace token with model access</li>
+                                <li><strong>SpeechBrain:</strong> Good accuracy, <strong>no token required</strong>, works out of the box</li>
+                                <li><strong>Resemblyzer:</strong> Simpler approach, <strong>no token required</strong>, works well for clear audio</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
                 
@@ -253,8 +256,42 @@
             // Only show token field for pyannote method
             if (method === 'pyannote') {
                 tokenGroup.style.display = 'block';
+                
+                // Show a warning about token issues
+                const warningDiv = document.createElement('div');
+                warningDiv.id = 'token-warning';
+                warningDiv.style.backgroundColor = '#fff3cd';
+                warningDiv.style.color = '#856404';
+                warningDiv.style.padding = '10px';
+                warningDiv.style.borderRadius = '4px';
+                warningDiv.style.marginTop = '10px';
+                warningDiv.style.border = '1px solid #ffeeba';
+                warningDiv.innerHTML = `
+                    <strong>⚠️ Having trouble with the HuggingFace token?</strong>
+                    <p>If you encounter token errors, you can:</p>
+                    <ol>
+                        <li>Make sure you've accepted the licenses for both models</li>
+                        <li>Generate a new token with read access</li>
+                        <li>Or simply switch to SpeechBrain or Resemblyzer method (no token required)</li>
+                    </ol>
+                `;
+                
+                // Remove existing warning if any
+                const existingWarning = document.getElementById('token-warning');
+                if (existingWarning) {
+                    existingWarning.remove();
+                }
+                
+                // Add the warning after the token field
+                tokenGroup.appendChild(warningDiv);
             } else {
                 tokenGroup.style.display = 'none';
+                
+                // Remove warning if it exists
+                const existingWarning = document.getElementById('token-warning');
+                if (existingWarning) {
+                    existingWarning.remove();
+                }
             }
         }
         

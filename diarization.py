@@ -24,12 +24,19 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
     Args:
         audio_path: Path to the audio file
         method: Diarization method to use ('pyannote', 'speechbrain', or 'resemblyzer')
-        huggingface_token: Token for HuggingFace (required for pyannote)
+        huggingface_token: Token for HuggingFace (required for pyannote only)
         **kwargs: Additional parameters for specific methods
         
     Returns:
         List of segments with speaker IDs and timestamps
     """
+    # Print method being used
+    print(f"Starting diarization with {method} method")
+    
+    # For non-pyannote methods, ignore the token
+    if method != "pyannote":
+        huggingface_token = None
+        print(f"Note: {method} method does not require a HuggingFace token")
     # Import globals
     global pyannote_pipeline, speechbrain_model, resemblyzer_encoder
     

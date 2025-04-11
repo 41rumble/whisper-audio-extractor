@@ -198,12 +198,21 @@ def perform_diarization(audio_path, huggingface_token=None, method="pyannote", m
     
     # Perform diarization using the selected method
     try:
-        segments = diarize(
-            audio_path, 
-            method=method, 
-            huggingface_token=huggingface_token,
-            max_speakers=max_speakers
-        )
+        # Only pass the token for pyannote method
+        if method == "pyannote":
+            segments = diarize(
+                audio_path, 
+                method=method, 
+                huggingface_token=huggingface_token,
+                max_speakers=max_speakers
+            )
+        else:
+            # For other methods, don't pass the token
+            segments = diarize(
+                audio_path, 
+                method=method,
+                max_speakers=max_speakers
+            )
         
         if segments:
             # Post-process the segments
@@ -366,7 +375,7 @@ def upload_file():
     print(f"Diarization enabled: {enable_diarization}")
     
     # Get diarization method and options
-    diarization_method = request.form.get('diarization_method', 'pyannote')
+    diarization_method = request.form.get('diarization_method', 'speechbrain')
     max_speakers = int(request.form.get('max_speakers', '5'))
     huggingface_token = request.form.get('huggingface_token', HUGGINGFACE_TOKEN)
     
