@@ -144,18 +144,44 @@ def perform_diarization(audio_path, huggingface_token=None):
         # Initialize the diarization pipeline if not already done
         if diarization_pipeline is None:
             print("Loading speaker diarization model...")
+            
             # First login with the token
             huggingface_hub.login(token=huggingface_token)
             
+            # Explicitly download the segmentation model first
+            try:
+                print("Downloading segmentation model...")
+                from huggingface_hub import hf_hub_download
+                from torch import load as torch_load
+                
+                # Download the model files
+                segmentation_checkpoint = hf_hub_download(
+                    repo_id="pyannote/segmentation-3.0",
+                    filename="pytorch_model.bin",
+                    token=huggingface_token
+                )
+                segmentation_config = hf_hub_download(
+                    repo_id="pyannote/segmentation-3.0",
+                    filename="config.yaml",
+                    token=huggingface_token
+                )
+                print(f"Successfully downloaded segmentation model files")
+            except Exception as e:
+                print(f"Error downloading segmentation model: {str(e)}")
+                raise
+            
             # Then load the pipeline
+            print("Creating diarization pipeline...")
             diarization_pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
                 use_auth_token=huggingface_token
             )
+            print("Diarization pipeline created successfully")
         
         # Run the diarization
-        print("Performing speaker diarization...")
+        print("Running diarization on audio...")
         diarization = diarization_pipeline(audio_path)
+        print("Diarization completed")
         
         # Convert to a more usable format
         segments = []
@@ -166,6 +192,7 @@ def perform_diarization(audio_path, huggingface_token=None):
                 "end": turn.end
             })
         
+        print(f"Extracted {len(segments)} speaker segments")
         return segments
     except Exception as e:
         error_msg = str(e)
@@ -176,7 +203,15 @@ def perform_diarization(audio_path, huggingface_token=None):
             print("Authentication error: Invalid HuggingFace token")
         elif "403" in error_msg or "access" in error_msg.lower():
             print("Access error: Your token does not have access to the model")
-            print("Please accept the license agreement at https://huggingface.co/pyannote/speaker-diarization-3.1")
+            print("Please accept the license agreements for BOTH models:")
+            print("1. https://huggingface.co/pyannote/speaker-diarization-3.1")
+            print("2. https://huggingface.co/pyannote/segmentation-3.0")
+        elif "download" in error_msg.lower():
+            print("\nThere seems to be an issue with downloading the models.")
+            print("Please make sure you have:")
+            print("1. Accepted the license for BOTH models")
+            print("2. Generated a token with read access")
+            print("3. Provided the correct token")
         
         return None
 

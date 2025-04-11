@@ -84,6 +84,8 @@ To use speaker diarization (identifying different speakers), you must complete t
 
 **Important:** You must accept the license for BOTH models or speaker diarization will not work, even with a valid token.
 
+**Troubleshooting:** If you still encounter issues with speaker diarization, you may need to accept licenses for additional dependency models like [pyannote/embedding](https://huggingface.co/pyannote/embedding).
+
 ### Improving Accuracy
 
 For the best transcription results:
