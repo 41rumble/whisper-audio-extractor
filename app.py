@@ -163,9 +163,16 @@ def merge_diarization_with_transcription(transcription, diarization_segments):
     
     return result
 
-def format_transcript_with_speakers(transcription):
+def format_transcript_with_speakers(transcription, html_format=False):
     """
     Format the transcription with speaker labels.
+    
+    Args:
+        transcription: The transcription result from Whisper
+        html_format: If True, format with HTML tags for web display
+    
+    Returns:
+        Formatted text with speaker labels
     """
     if not transcription.get("segments") or not any("speaker" in segment for segment in transcription["segments"]):
         return transcription["text"]
@@ -176,12 +183,21 @@ def format_transcript_with_speakers(transcription):
     
     for segment in transcription["segments"]:
         speaker = segment.get("speaker", "Unknown")
+        # Make speaker label more user-friendly (SPEAKER_0 -> Speaker 1)
+        if speaker.startswith("SPEAKER_"):
+            speaker_num = int(speaker.split("_")[1]) + 1  # Convert to 1-based indexing for users
+            speaker = f"Speaker {speaker_num}"
+        
         text = segment["text"].strip()
         
         if speaker != current_speaker:
             # Save the previous speaker's text
             if current_text:
-                formatted_text.append(f"{current_speaker}: {' '.join(current_text)}")
+                speaker_text = ' '.join(current_text)
+                if html_format:
+                    formatted_text.append(f"<strong>{current_speaker}:</strong> {speaker_text}")
+                else:
+                    formatted_text.append(f"{current_speaker}: {speaker_text}")
                 current_text = []
             
             current_speaker = speaker
@@ -190,9 +206,14 @@ def format_transcript_with_speakers(transcription):
     
     # Add the last speaker's text
     if current_text:
-        formatted_text.append(f"{current_speaker}: {' '.join(current_text)}")
+        speaker_text = ' '.join(current_text)
+        if html_format:
+            formatted_text.append(f"<strong>{current_speaker}:</strong> {speaker_text}")
+        else:
+            formatted_text.append(f"{current_speaker}: {speaker_text}")
     
-    return "\n\n".join(formatted_text)
+    separator = "\n\n"
+    return separator.join(formatted_text)
 
 @app.route('/')
 def index():
@@ -277,9 +298,13 @@ def upload_file():
             # Merge diarization with transcription if available
             if diarization_segments:
                 result = merge_diarization_with_transcription(result, diarization_segments)
-                formatted_text = format_transcript_with_speakers(result)
+                # Plain text format for file
+                formatted_text = format_transcript_with_speakers(result, html_format=False)
+                # HTML format for web display
+                html_formatted_text = format_transcript_with_speakers(result, html_format=True)
             else:
                 formatted_text = result["text"]
+                html_formatted_text = result["text"]
             
             # Create a results directory if it doesn't exist
             results_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'transcriptions')
@@ -291,20 +316,40 @@ def upload_file():
             transcription_filename = f"{original_filename}_{timestamp}.txt"
             transcription_path = os.path.join(results_dir, transcription_filename)
             
+            # Create a clean transcript file
             with open(transcription_path, 'w', encoding='utf-8') as f:
-                f.write(f"Name: {name}\n")
-                f.write(f"Description: {description}\n")
-                f.write(f"Original file: {file.filename}\n")
-                f.write(f"Model: {model_size}\n")
-                if language:
-                    f.write(f"Language: {language}\n")
-                f.write(f"Speaker diarization: {'Enabled' if diarization_segments else 'Disabled'}\n")
-                f.write("\n--- TRANSCRIPTION ---\n\n")
-                f.write(formatted_text)
+                # Add a simple header with basic info
+                f.write(f"# Transcript: {name}\n")
+                f.write(f"# Source: {file.filename}\n")
+                f.write(f"# Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"# Model: Whisper {model_size}\n")
+                if diarization_segments:
+                    f.write("# Speaker identification: Enabled\n")
+                f.write("\n")
                 
-                # Save raw JSON data for further processing if needed
-                f.write("\n\n--- RAW DATA ---\n")
-                f.write(json.dumps(result, indent=2))
+                # Write the actual transcript
+                f.write(formatted_text)
+            
+            # Save detailed metadata and raw data to a separate JSON file for advanced users
+            json_filename = f"{original_filename}_{timestamp}_data.json"
+            json_path = os.path.join(results_dir, json_filename)
+            
+            with open(json_path, 'w', encoding='utf-8') as f:
+                metadata = {
+                    "file_info": {
+                        "name": name,
+                        "description": description,
+                        "original_file": file.filename,
+                        "processed_date": time.strftime('%Y-%m-%d %H:%M:%S')
+                    },
+                    "processing_options": {
+                        "model": model_size,
+                        "language": language,
+                        "speaker_diarization": diarization_segments is not None
+                    },
+                    "result": result
+                }
+                json.dump(metadata, f, indent=2)
             
             print(f"Transcription saved to: {transcription_path}")
             print("\n--- TRANSCRIPTION ---\n")
@@ -319,8 +364,9 @@ def upload_file():
             
             return jsonify({
                 'success': True,
-                'transcription': formatted_text,
+                'transcription': html_formatted_text,  # HTML formatted for web display
                 'transcription_file': transcription_path,
+                'data_file': json_path,
                 'has_speaker_diarization': diarization_segments is not None,
                 'metadata': {
                     'name': name,
