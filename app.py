@@ -254,7 +254,12 @@ def upload_file():
     description = request.form.get('description', '')
     model_size = request.form.get('model_size', 'base')  # tiny, base, small, medium, large
     language = request.form.get('language', None)  # Language code or None for auto-detection
-    enable_diarization = request.form.get('enable_diarization', 'false').lower() == 'true'
+    
+    # Handle checkbox value properly - checkboxes only send a value when checked
+    enable_diarization = 'enable_diarization' in request.form
+    print(f"Form data for enable_diarization: {request.form.get('enable_diarization', 'not present')}")
+    print(f"Diarization enabled: {enable_diarization}")
+    
     huggingface_token = request.form.get('huggingface_token', HUGGINGFACE_TOKEN)
     
     # Log metadata

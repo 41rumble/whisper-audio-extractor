@@ -236,6 +236,30 @@
             formData.append('name', nameInput.value);
             formData.append('description', descriptionInput.value);
             
+            // Add model and language options
+            const modelSelect = document.getElementById('model_size');
+            formData.append('model_size', modelSelect.value);
+            
+            const languageSelect = document.getElementById('language');
+            if (languageSelect.value) {
+                formData.append('language', languageSelect.value);
+            }
+            
+            // Explicitly add checkbox state
+            const diarizationCheckbox = document.getElementById('enable_diarization');
+            if (diarizationCheckbox.checked) {
+                formData.append('enable_diarization', 'true');
+                console.log("Speaker diarization enabled");
+                
+                // Add HuggingFace token if diarization is enabled
+                const tokenInput = document.getElementById('huggingface_token');
+                if (tokenInput.value) {
+                    formData.append('huggingface_token', tokenInput.value);
+                }
+            } else {
+                console.log("Speaker diarization disabled");
+            }
+            
             // Disable submit button and show progress
             submitBtn.disabled = true;
             progressContainer.style.display = 'block';
