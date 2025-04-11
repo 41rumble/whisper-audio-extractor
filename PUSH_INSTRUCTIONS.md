@@ -37,9 +37,20 @@ pip install -r requirements.txt
 python app.py
 ```
 
+   If port 52678 is already in use, you can specify a different port:
+```bash
+python app.py --port 8080
+```
+
 4. Open your browser and navigate to:
 ```
 http://localhost:52678
 ```
+   (or the port you specified)
 
-5. Upload an MP4 file, add metadata, and see the transcription results!
+5. If you encounter NumPy-related errors, install a compatible version:
+```bash
+pip install numpy<2.0.0
+```
+
+6. Upload an MP4 file, add metadata, and see the transcription results!

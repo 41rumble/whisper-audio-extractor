@@ -39,11 +39,17 @@ A simple web application that allows users to upload MP4 videos, extract the aud
    ```
    python app.py
    ```
+   
+   If port 52678 is already in use, you can specify a different port:
+   ```
+   python app.py --port 8080
+   ```
 
 2. Open your web browser and navigate to:
    ```
    http://localhost:52678
    ```
+   (or the port you specified)
 
 3. Use the web interface to:
    - Enter a name and description for your video
@@ -59,6 +65,8 @@ A simple web application that allows users to upload MP4 videos, extract the aud
 - The application uses the "base" Whisper model by default, which balances accuracy and speed
 - Maximum upload size is set to 500MB
 - Temporary files are automatically cleaned up after processing
+- This application requires NumPy < 2.0.0 due to compatibility issues with PyTorch
+- If you encounter NumPy-related errors, run: `pip install numpy<2.0.0`
 
 ## License
 

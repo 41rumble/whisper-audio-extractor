@@ -94,4 +94,19 @@ def upload_file():
     return jsonify({'error': 'Unknown error'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=52678, debug=True)
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='MP4 Audio Extractor & Transcriber')
+    parser.add_argument('--port', type=int, default=52678, help='Port to run the server on (default: 52678)')
+    args = parser.parse_args()
+    
+    # Run the app with the specified port
+    try:
+        app.run(host='0.0.0.0', port=args.port, debug=True)
+    except OSError as e:
+        if "Address already in use" in str(e):
+            print(f"\nERROR: Port {args.port} is already in use.")
+            print(f"Please try a different port with: python app.py --port <port_number>\n")
+        else:
+            raise
