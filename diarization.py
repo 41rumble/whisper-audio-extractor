@@ -7,10 +7,19 @@ import numpy as np
 import torch
 from pydub import AudioSegment
 import tempfile
-import librosa
 from scipy.spatial.distance import cdist
 from scipy.signal import medfilt
 import warnings
+
+# Try to import librosa
+try:
+    import librosa
+    LIBROSA_AVAILABLE = True
+except ImportError:
+    LIBROSA_AVAILABLE = False
+    print("Warning: librosa not available. Installing it...")
+    import subprocess
+    subprocess.check_call(["pip", "install", "librosa"])
 
 # Global variables for models
 pyannote_pipeline = None
@@ -117,12 +126,28 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
             return None
             
     elif method == "speechbrain":
+        # Make sure librosa is available
+        if not 'librosa' in globals():
+            try:
+                import librosa
+                print("Librosa imported successfully")
+            except ImportError:
+                print("Librosa is required for SpeechBrain diarization. Installing...")
+                import subprocess
+                subprocess.check_call(["pip", "install", "librosa"])
+                import librosa
+                print("Librosa installed and imported")
+        
         try:
             import speechbrain as sb
             from speechbrain.pretrained import EncoderClassifier
         except ImportError:
-            print("SpeechBrain is not available. Please install speechbrain.")
-            return None
+            print("SpeechBrain is not available. Installing...")
+            import subprocess
+            subprocess.check_call(["pip", "install", "speechbrain"])
+            import speechbrain as sb
+            from speechbrain.pretrained import EncoderClassifier
+            print("SpeechBrain installed")
             
         if not os.path.exists(audio_path):
             print(f"Audio file not found: {audio_path}")
@@ -162,6 +187,8 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
             
             # Load audio
             print("Loading and segmenting audio...")
+            # Make sure we're using the imported librosa
+            import librosa
             signal, fs = librosa.load(audio_path, sr=16000, mono=True)
             duration = len(signal) / fs
             
@@ -257,12 +284,26 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
             return None
             
     elif method == "resemblyzer":
+        # Make sure librosa is available
+        if not 'librosa' in globals():
+            try:
+                import librosa
+                print("Librosa imported successfully")
+            except ImportError:
+                print("Librosa is required for Resemblyzer diarization. Installing...")
+                import subprocess
+                subprocess.check_call(["pip", "install", "librosa"])
+                import librosa
+                print("Librosa installed and imported")
+        
         try:
             from resemblyzer import VoiceEncoder, preprocess_wav
-            import librosa
         except ImportError:
-            print("Resemblyzer is not available. Please install resemblyzer and librosa.")
-            return None
+            print("Resemblyzer is not available. Installing...")
+            import subprocess
+            subprocess.check_call(["pip", "install", "resemblyzer"])
+            from resemblyzer import VoiceEncoder, preprocess_wav
+            print("Resemblyzer installed")
             
         try:
             print("Using Resemblyzer for diarization (no HuggingFace token needed)...")
@@ -275,6 +316,8 @@ def perform_diarization(audio_path, method="pyannote", huggingface_token=None, *
             
             # Load and preprocess audio
             print("Loading and preprocessing audio...")
+            # Make sure we're using the imported librosa
+            import librosa
             wav, sr = librosa.load(audio_path, sr=16000, mono=True)
             wav = preprocess_wav(wav)
             
