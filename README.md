@@ -102,6 +102,10 @@ For the best transcription results:
 - Temporary files are automatically cleaned up after processing
 - This application requires NumPy < 2.0.0 due to compatibility issues with PyTorch
 - If you encounter NumPy-related errors, run: `pip install numpy<2.0.0`
+- GPU acceleration is used automatically if available:
+  - Whisper transcription uses GPU if available
+  - Speaker diarization uses GPU if available (significantly faster)
+  - CPU-only operation is supported but will be much slower, especially for diarization
 
 ## License
 

@@ -176,6 +176,15 @@ def perform_diarization(audio_path, huggingface_token=None):
                 "pyannote/speaker-diarization-3.1",
                 use_auth_token=huggingface_token
             )
+            
+            # Move to GPU if available
+            if torch.cuda.is_available():
+                print("CUDA is available. Moving diarization pipeline to GPU...")
+                diarization_pipeline.to(torch.device("cuda"))
+                print("Diarization pipeline moved to GPU")
+            else:
+                print("CUDA is not available. Using CPU for diarization (this will be slower)")
+                
             print("Diarization pipeline created successfully")
         
         # Run the diarization
